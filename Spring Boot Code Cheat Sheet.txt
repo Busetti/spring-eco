@@ -1,0 +1,848 @@
+
+spring boot rest crud application :
+_________________________________
+
+step 1: application.properties
+_______________________
+server.servlet.context-path=/productapp
+server.port=8082
+
+spring.datasource.url=jdbc:mysql://localhost:3306/demoms?useSSL=false
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+logging.level.org.springframework.web: DEBUG
+logging.level.org.hibernate: ERROR
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+
+UserInterface.PRODUCT_ADD_SUCCESS=product added successfully
+UserInterface.PRODUCT_UPDATE_SUCCESS=product added successfully
+UserInterface.PRODUCT_DELETE_SUCCESS=product added successfully
+
+Service.PRODUCT_NOT_EXISTS=Product not exist
+
+
+
+
+in case you want to use h2 databse:
+--------------------------------
+server.port=8090
+server.servlet.context-path=/empapp
+spring.h2.console.enabled=true
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=password
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+# Custom H2 Console URL
+spring.h2.console.path=/h2
+
+spring.jpa.hibernate.ddl-auto=update
+
+logging.level.org.springframework.web: DEBUG
+logging.level.org.hibernate: ERROR
+
+spring.jpa.show-sql=true
+
+
+
+
+
+
+
+
+
+Step 2: dao layer
+_______________________
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@Entity
+@Table(name = "product_table")
+public class Product {
+	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer id;
+	private String name;
+	private BigDecimal price;
+	public Product(String name, Double price) {
+		super();
+		this.name = name;
+		this.price = price;
+	}
+		
+}
+
+@Repository
+public interface ProductDao extends JpaRepository<Product, Integer>{
+	public Product findByName(String name);
+}
+
+Step 3: service layer
+_______________________
+
+public interface ProductService {
+	public List<Product> findAll();
+	public Product getById(int id);
+	public Product addProduct(Product product);
+	public Product updateProduct(int id, Product product);
+	public Product deleteProduct(int id);
+	
+}
+
+
+
+public class ProductNotFoundException extends RuntimeException{
+	public ProductNotFoundException(String message) {
+		super(message);
+	}
+}
+
+
+
+
+@Service
+@Transactional
+public class ProductServiceImpl implements ProductService {
+
+	private ProductDao productDao;
+
+	@Autowired
+	public ProductServiceImpl(ProductDao productDao) {
+		this.productDao = productDao;
+	}
+
+	@Override
+	public List<Product> findAll() {
+		return productDao.findAll();
+	}
+
+	@Override
+	public Product getById(int id) {
+		return productDao.findById(id)
+				.orElseThrow(() -> new ProductNotFoundException("product with id" + id + " is not found"));
+	}
+
+	@Override
+	public Product addProduct(Product product) {
+		productDao.save(product);
+		return product;
+	}
+
+	@Override
+	public Product updateProduct(int id, Product product) {
+		Product productToUpdate= getById(id);
+		productToUpdate.setPrice(product.getPrice());
+		productDao.save(productToUpdate);
+		return productToUpdate;
+	}
+
+	@Override
+	public Product deleteProduct(int id) {
+		Product productToDelete= getById(id);
+		productDao.delete(productToDelete);
+		return productToDelete;
+	}
+
+}
+
+
+Step 4: rest controller
+_______________________
+@RestController
+public class ProductController {
+
+	private ProductService productService;
+
+	@Autowired
+	public ProductController(ProductService productService) {
+		this.productService = productService;
+	}
+	@GetMapping(path = "products")
+	public List<Product>findAll(){
+		return productService.findAll();
+	}
+	
+	@GetMapping(path = "products/{id}")
+	public Product findById(@PathVariable(name = "id") int id){
+		return productService.getById(id);
+	}
+	
+	@PostMapping(path = "products")
+	public Product addProduct( @RequestBody Product product){
+		return productService.addProduct(product);
+	}
+	
+	@DeleteMapping(path = "products/{id}")
+	public Product deleteProduct(@PathVariable(name = "id") int id){
+		return productService.deleteProduct(id);
+	}
+	
+	@PutMapping(path = "products/{id}")
+	public Product updateProduct(@PathVariable(name = "id") int id, @RequestBody Product product){
+		return productService.updateProduct(id, product);
+	}
+}
+
+
+
+Step 5: rest controller: ResponseEntity
+_______________________________________
+
+@RestController
+public class ProductController {
+
+	private ProductService productService;
+
+	@Autowired
+	public ProductController(ProductService productService) {
+		this.productService = productService;
+	}
+	
+	@GetMapping(path = "products")
+	public ResponseEntity<List<Product>> findAll(){
+		return ResponseEntity.status(HttpStatus.OK).body(productService.findAll());
+	}
+	
+	@GetMapping(path = "products/{id}")
+	public ResponseEntity<Product> findById(@PathVariable(name = "id") int id){
+		return ResponseEntity.ok(productService.getById(id));
+	}
+	
+	@PostMapping(path = "products")
+	public ResponseEntity<Product> addProduct( @RequestBody Product product){
+		return ResponseEntity.status(HttpStatus.CREATED).body(productService.addProduct(product));
+	}
+	
+	@DeleteMapping(path = "products/{id}")
+	public ResponseEntity<Void> deleteProduct(@PathVariable(name = "id") int id){
+		 productService.deleteProduct(id);
+		 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+	}
+	
+	@PutMapping(path = "products/{id}")
+	public ResponseEntity<Product> updateProduct(@PathVariable(name = "id") int id, @RequestBody Product product){
+		return ResponseEntity.status(HttpStatus.CREATED).body(productService.updateProduct(id, product));
+	}
+}
+
+
+
+
+Step 6: rest controller exception handling
+_______________________________________
+@ResponseStatus(code =HS.NotFound)
+ProductNotFoundException extends RuntimeExcetion{
+}
+
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ErrorDetails {
+	private String message;
+	private String details;
+	
+	private String name;
+	private Date date;
+	
+}
+
+
+
+@RestControllerAdvice
+public class ExHandler {
+
+	@ExceptionHandler(ProductNotFoundException.class)
+	public ResponseEntity<ErrorDetails> handle404(Exception ex, WebRequest req){
+		ErrorDetails details=new ErrorDetails();
+		details.setDate(new Date());
+		details.setDetails(req.getDescription(true));
+		details.setName("rgupta.mtech@gmail.com");
+		details.setDetails(ex.toString());
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(details);
+	}
+	
+
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ErrorDetails> handle500(Exception ex, WebRequest req){
+		ErrorDetails details=new ErrorDetails();
+		details.setDate(new Date());
+		details.setDetails(req.getDescription(true));
+		details.setName("rgupta.mtech@gmail.com");
+		details.setDetails(ex.toString());
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(details);
+	}
+
+	
+}
+
+
+Step 7: JSR 303 validateion api , exception handling
+__________________________________________________
+
+1. add validation api
+
+2. apply @valid in post and update method 
+
+3. 
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ProductDto {
+
+	private int id;
+	
+	@NotNull(message = "{product.name.absent}")
+	@Pattern(regexp = "[A-Za-z]+( [A-Za-z]+)*", message = "{product.name.invalid}")
+	private String name;
+
+	@NotNull(message = "{product.price.absent}")
+	@Range(min = 100, max = 100000, message = "{product.price.invalid}")
+	private BigDecimal price;
+
+}
+
+
+4. create exception handler
+
+       @ResponseStatus(HttpStatus.BAD_REQUEST)
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public Map<String, String> handleInvalidArgument(MethodArgumentNotValidException ex) {
+
+		Map<String, String> errorMap = new HashMap<>();
+		ex.getBindingResult().getFieldErrors().forEach(error -> {
+			errorMap.put(error.getField(), error.getDefaultMessage());
+		});
+		return errorMap;
+	}
+
+
+ValidationMessages.properties
+-----------------------------
+
+product.name.absent=Please provide product name
+product.name.invalid=product Name should contain only alphabets and space
+
+product.price.absent=Please provide product price 
+account.price.invalid=Please provide correct price bw 100 to 100000
+
+
+	Other validation example:
+	-------------------------
+
+	@Email(message = "{account.email.invalid}")
+	@NotNull(message = "{account.email.absent}")
+	private String email;
+	
+	@NotNull(message = "{account.phone.absent}")
+	@Pattern(regexp = "[789][0-9]{9}", message = "{account.phone.invalid}")
+	private String phone;
+
+
+
+
+
+
+
+Supporting both xml and json:
+	_______________________________
+
+	Step 1: put parser for xml
+
+	     	   <dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-xml</artifactId>
+		</dependency>
+
+	Step 2:
+	@GetMapping(path = "products", produces = {MediaType.APPLICATION_JSON_VALUE, 
+			MediaType.APPLICATION_XML_VALUE})
+
+
+
+
+
+
+
+richardson maturity model
+_________________________
+
+Step 8: hateoas: Hypermedia as the Engine of Application State (HATEOAS)
+__________________
+
+ 1: put hateoas dependencies
+
+ 2: enable static improt:
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
+ 3: change POJO class:
+
+public class Product extends RepresentationModel<Product> {
+}
+
+
+
+@GetMapping(path = "productsV2/{id}")
+	public EntityModel<Product>  findByIdLink(@PathVariable(name = "id") int id){
+		Link link=linkTo(methodOn(ProductController.class).findByIdLink(id)).withSelfRel();
+		Product product=productService.getById(id);
+		product.add(link);
+		return EntityModel.of(product);
+}
+
+@GetMapping(path = "productsV2")
+	public CollectionModel<Product> findAllV2(){
+		List<Product> products=productService.findAll();
+		for(Product product: products) {
+			Link link=linkTo(methodOn(ProductController.class).findByIdLink(product.getId())).withSelfRel();
+			product.add(link);
+		}
+		return CollectionModel.of(products);
+}
+
+
+
+9. Using OpenAPI 3.0
+_____________________
+
+=> Documenting a Spring REST API Using OpenAPI 3.0
+=>Swagger is almost equivalent to SOAP formate, used for documentation of REST api
+
+	Step 1:
+
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-ui</artifactId>
+			<version>1.6.4</version>
+		</dependency>
+
+	Step 2:
+
+	http://localhost:8090/bookapp/v3/api-docs
+	
+	http://localhost:8090/bookapp/swagger-ui/index.html
+
+	http://localhost:8090/bookapp/v3/api-docs.yaml
+
+	Step 3:
+	Customization location
+	springdoc.swagger-ui.path=/swagger-ui-bookapp.html
+
+	@OpenAPIDefinition(info = @Info(title = "bookapp API", version = "2.0" , description = "YMSLI bookapp API"))
+	public class BookappApplication implements CommandLineRunner {
+	}
+
+
+	
+10. caching
+_____________
+
+
+step 1: configuration of cache
+
+@Configuration
+@EnableCaching
+public class CachingConfig {
+	@Bean
+	public CacheManager cacheManager(){
+		ConcurrentMapCacheManager cacheManager=new ConcurrentMapCacheManager("products");
+		return cacheManager;
+		
+	}
+}
+
+
+Step 2: applying cache annotations on service layer
+
+@Slf4j
+@Service
+@Transactional
+public class ProductServiceImpl implements ProductService {
+
+	
+	@Cacheable(value="products")
+	@Override
+	public List<Product> findAll() {
+		//
+	}
+
+	@Cacheable(value="products", key = "#id")
+	@Override
+	public Product getById(int id) {
+		//
+	}
+
+	@CachePut(value="products", key="#result.id")
+	@Override
+	public Product addProduct(Product product) {
+		//
+	}
+
+	@CachePut(value="products", key="#result.id")
+	@Override
+	public Product updateProduct(int id, Product product) {
+		//
+	}
+
+	@CacheEvict(value="products", key="#id")
+	@Override
+	public Product deleteProduct(int id) {
+		//
+	}
+
+	@CacheEvict(value="products", allEntries=true)
+	@Override
+	public void evictCache() {
+		log.info("cache is cleared...");
+	}
+
+}
+
+
+
+
+Step 11: schedule processes
+____________________________
+
+	Note:
+	The simple rules that we need to follow to annotate a method with @Scheduled are:
+
+			a method should have the void return type
+			a method should not accept any parameters
+
+	step 1: put @EnableScheduling on bootstrap class
+
+	step 2: create an component with @Scheduled annotation
+
+				
+		@Service
+		public class ScheduledJob {
+			private Logger logger = LoggerFactory.getLogger(ScheduledJob.class);
+		
+			@Autowired
+			private ProductService service;
+		
+			@Scheduled(cron = "0,30 * * * * *")
+			public void cronJob() {
+				logger.info("> cronJob");
+		
+				List<Product> products = service.findAll();
+				logger.info("There are {} products in the data store.", products.size());
+		
+				logger.info("< cronJob");
+			}
+		
+			// after application startup delay of 5 sec, schedule to run each after 15
+			
+			@Scheduled(initialDelay = 5000, fixedRate = 15000)
+			public void fixedRateJob() {
+				logger.info("> fixedRateJob");
+		
+				// Add scheduled logic here
+		
+				List<Product> products = service.findAll();
+				
+				logger.info("There are {} books in the data store.", products.size());
+		
+				logger.info("< fixedRateJob");
+			}
+		
+		}
+
+
+ref:
+https://www.baeldung.com/spring-scheduled-tasks
+https://www.tutorialspoint.com/unix_commands/crontab.htm
+
+
+
+Step 12: web application with boot
+____________________________
+
+1. We need to put dependency:
+
+		<dependency>
+			<groupId>org.apache.tomcat.embed</groupId>
+			<artifactId>tomcat-embed-jasper</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>jstl</artifactId>
+		</dependency>
+
+
+2. We need to configure view resolver
+
+spring.mvc.view.prefix:/WEB-INF/views/
+spring.mvc.view.suffix:.jsp
+
+
+3. define controller 
+
+@Controller
+public class ProductController {
+	
+	private ProductService productService;
+
+	@Autowired
+	public ProductController(ProductService productService) {
+		this.productService = productService;
+	}
+	
+	@GetMapping("products")
+	public ModelAndView allProducts(ModelAndView mv) {
+		mv.setViewName("products");
+		mv.addObject("products", productService.findAll());
+		
+		return mv;
+	}
+}
+
+put jsp in /bootapp/src/main/webapp/WEB-INF/views
+
+
+4. define jsp view 
+
+<table>
+	<thead>
+		<tr>
+			<th>product id</th>
+			<th>product name</th>
+			<th>product price</th>
+		</tr>
+	</thead>
+	<tbody>
+		<c:forEach items="${products}" var="product">
+			<tr>
+				<td>${product.id }</td>
+				<td>${product.name }</td>
+				<td>${product.price }</td>
+			</tr>
+		</c:forEach>
+	</tbody>
+</table>
+
+
+
+Step 11: Converting jar to war and deploy over tomcat
+___________________________________________________
+https://www.baeldung.com/spring-boot-war-tomcat-deploy
+etag
+https://www.youtube.com/watch?v=BJiBvlgrOkA
+
+
+
+RestTemplate tutorial:
+______________________
+	=> RestTemplate is used to communication bw different spring boot application
+	=> key for microservice project development
+
+	=> Microservices communication is possible using RestTemplate
+	=> RestTemplate various method to intract bw diff microservices
+		=> methods:
+			xxxForObject()-getForObject(), postForObject(), getForEntity(), postForEntity()
+			xxxForEntity()
+			exchange()-calling Http POST/PUT/DELETE endpoint 
+
+	=> How to add base URL in RestTemplate
+	=> How to Add timout in RestTemplate
+	=> How to add interceptor in RestTemplate for centralized logging of request and response
+
+
+Example:
+________
+Refer product application
+
+
+getForObject method:
+==================
+
+getting an object :
+____________________
+Product product=restTemplate.getForObject("http://localhost:8082/productapp/products/2", Product.class);
+
+getting an Product by id :
+_________________________
+
+String productById="http://localhost:8082/productapp/products/{id}";
+Map<String, String> prop=new HashMap<>();
+prop.put("id", id);
+Product product=restTemplate.getForObject(productById,Product.class, prop);
+	
+
+getting an object as string:
+____________________________
+String productString=restTemplate.getForObject("http://localhost:8082/productapp/products/2", String.class);
+
+
+getting all products:
+________________
+List products = restTemplate.getForObject("http://localhost:8082/productapp/products", List.class);
+
+
+
+adding new product:
+_______________________
+Product productAdded=restTemplate.postForObject("http://localhost:8082/productapp/products",product, Product.class);
+
+
+
+
+xxxForEntity()-calling Http POST/PUT/DELETE endpoint 
+_____________________________________
+
+
+getList:
+_________
+ResponseEntity<List> productEntity = 
+				restTemplate
+				.getForEntity("http://localhost:8082/productapp/products",List.class);
+	
+		System.out.println(productEntity.getStatusCodeValue());
+		System.out.println(productEntity.getHeaders());
+		return productEntity.getBody();
+
+
+ getSingleObject
+_________________
+	Map<String, String> prop=new HashMap<>();
+		
+		prop.put("id", id);
+		ResponseEntity<Product> productEntity = restTemplate
+				.getForEntity("http://localhost:8082/productapp/products/{id}",
+				Product.class, prop);
+		return productEntity.getBody();
+
+
+ postForEntity:
+ ______________
+	ResponseEntity<Product> productEntity = restTemplate
+			.postForEntity("http://localhost:8082/productapp/products",
+				product, Product.class);
+		return productEntity.getBody();
+
+  
+deleteProduct: delete
+_________
+
+  	Map<String, String> uriVariables = new HashMap<>();
+	uriVariables.put("id", id);
+
+	restTemplate.delete("http://localhost:8082/productapp/products/{id}", uriVariables);
+
+updateProduct
+___________
+
+  	Map<String, String> uriVariables = new HashMap<>();
+	uriVariables.put("id", id);
+
+        restTemplate.put("http://localhost:8082/productapp/products/{id}", product, uriVariables);
+       	System.out.println("updated....");
+
+Feign
+___________
+=> The Feign is a declarative web service (HTTP client) developed by Netflix. 
+Its aim is to simplify the HTTP API clients. It is a Java to HTTP client binder. 
+If you want to use Feign, create an interface, and annotate it. 
+
+
+=> It is a library for creating REST API clients. It makes web service clients easier. 
+The developers can use declarative annotations to call the REST
+ services instead of writing representative boilerplate code.
+
+=> Spring Cloud OpenFeign provides OpenFeign integrations for Spring Boot 
+apps through auto-configuration and binding to the Spring Environment. 
+Without Feign, in Spring Boot application, we use RestTemplate to call the User service.
+ To use the Feign, we need to add spring-cloud-starter-openfeign dependency in the pom.xml file.
+
+
+Step 1:
+put openfeign dependency
+
+step 2: Apply @EnableFeignClients to bootstrap class
+
+@EnableFeignClients("com.product.model.service")
+@SpringBootApplication
+public class ProductApplication  {
+
+step 3: create ProductServiceProxy
+
+@FeignClient(name="product-service", url="http://localhost:8082/productapp")  
+public interface ProductServiceProxy {
+	@GetMapping(path = "products")
+	public ResponseEntity<List<Product>> findAll();
+	
+	@GetMapping(path = "products/{id}")
+	public ResponseEntity<Product> findById(@PathVariable(name = "id") int id);
+	
+	@PostMapping(path = "products")
+	public ResponseEntity<Product> addProduct( @RequestBody Product product);
+	
+	@DeleteMapping(path = "products/{id}")
+	public ResponseEntity<Void> deleteProduct(@PathVariable(name = "id") int id);
+	
+	@PutMapping(path = "products/{id}")
+	public ResponseEntity<Product> updateProduct
+	(@PathVariable(name = "id") int id, @RequestBody Product product);
+	
+}
+
+
+step 4: use ProductServiceProxy
+
+@RestController
+public class ProductClientController {
+
+	@Autowired
+	private ProductServiceProxy productServiceProxy;
+	
+	@GetMapping(path = "products")
+	public ResponseEntity<List<Product>> getAll() {
+		return productServiceProxy.findAll();
+	}
+
+	@GetMapping(path = "products/{id}")
+	public ResponseEntity<Product> getById(@PathVariable(name = "id") int id) {
+		return productServiceProxy.findById(id);
+	}
+
+	@PostMapping(path = "products")
+	public ResponseEntity<Product> addProduct(@RequestBody Product product) {
+		return productServiceProxy.addProduct(product);
+	}
+
+	@DeleteMapping(path = "products/{id}")
+	public ResponseEntity<Void> deleteProduct(@PathVariable(name = "id") int id) {
+		return productServiceProxy.deleteProduct(id);
+	}
+
+
+}
+
+
+
+step 5: in case of eureka server: no need to provide url :)
+
+@FeignClient(name="product-service")
+
+
+
+References:
+https://jsonplaceholder.typicode.com/users
+
+https://www.javatpoint.com/using-feign-rest-client-for-service-invocation
+https://stackoverflow.com/questions/46884362/what-are-the-advantages-and-disadvantages-of-using-feign-over-resttemplate
+
+
+
+http://jtuts.com/2016/05/24/validating-double-values-spring/
+
