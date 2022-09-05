@@ -26,6 +26,6 @@ public class CustomerController {
 	
 	@GetMapping("/findone")
 	public Customer findCustomer(@RequestParam("id") Long id) {
-		throw new NoCustomerDetailsFound("No Customer Found for " + id);
+		return customerService.findCustomer(id);
 	}
 }
