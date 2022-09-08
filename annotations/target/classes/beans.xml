@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<context:annotation-config />
+	<!-- Definition for textEditor bean without constructor-arg -->
+	<bean id="textEditor" class="com.guru.annotations.TextEditor"></bean>
+	<!-- Definition for spellChecker bean -->
+	<bean id="spellChecker" class="com.guru.annotations.SpellChecker"></bean>
+
+	<bean id = "hostel" class = "com.guru.annotations.Hostel"></bean>
+	<bean id="student1" class="com.guru.annotations.Student">
+		<property name="name" value="Hari" />
+		<property name="age" value="11" />
+	</bean>
+	<!-- Definition for student2 bean -->
+	<bean id="student2" class="com.guru.annotations.Student">
+		<property name="name" value="Nuha" />
+		<property name="age" value="2" />
+	</bean>
+
+</beans>
