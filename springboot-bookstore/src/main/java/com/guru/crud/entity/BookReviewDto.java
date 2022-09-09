@@ -3,7 +3,7 @@ package com.guru.crud.entity;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 
-public class BookDto {
+public class BookReviewDto {
 
 	
 	private Long id;
@@ -103,20 +103,8 @@ public class BookDto {
 		this.review = review;
 	}
 
-	public BookDto(Long id, String title, String author, CategoryEnum category,
-			@Min(value = 0, message = "Price should be positive value.") float price,
-			@Min(value = 0, message = "Total Count should be positive value.") int totalCount) {
-		super();
-		this.id = id;
-		this.title = title;
-		this.author = author;
-		this.category = category;
-		this.price = price;
-		this.totalCount = totalCount;
-	}
-
 	
-	public BookDto(Long id, String title, String author, CategoryEnum category,
+	public BookReviewDto(Long id, String title, String author, CategoryEnum category,
 			@Min(value = 0, message = "Price should be positive value.") float price,
 			@Min(value = 0, message = "Total Count should be positive value.") int totalCount, @Max(5) int review) {
 		super();
@@ -129,9 +117,7 @@ public class BookDto {
 		this.review = review;
 	}
 
-	public BookDto() {
-		super();
-		// TODO Auto-generated constructor stub
+	public BookReviewDto() {
 	}
 
     

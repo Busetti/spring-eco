@@ -3,6 +3,7 @@ package com.guru.crud.service;
 import java.util.List;
 
 import com.guru.crud.entity.BookDto;
+import com.guru.crud.entity.BookReviewDto;
 import com.guru.crud.entity.CategoryEnum;
 
 public interface BookStoreService {
@@ -13,7 +14,7 @@ public interface BookStoreService {
 
 	BookDto getBookById(Long id);
 
-	List<BookDto> getAllBooks();
+	List<BookReviewDto> getAllBooks();
 
 	int getNumberOfBooksById(Long id);
 

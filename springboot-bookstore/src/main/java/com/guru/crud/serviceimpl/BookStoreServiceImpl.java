@@ -1,5 +1,6 @@
 package com.guru.crud.serviceimpl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -14,12 +15,14 @@ import org.springframework.stereotype.Service;
 
 import com.guru.crud.entity.Book;
 import com.guru.crud.entity.BookDto;
+import com.guru.crud.entity.BookReviewDto;
 import com.guru.crud.entity.CategoryEnum;
 import com.guru.crud.exceptions.BadRequestException;
 import com.guru.crud.exceptions.BookNotFoundException;
 import com.guru.crud.exceptions.DuplicateResourceException;
 import com.guru.crud.repo.BookRepository;
 import com.guru.crud.service.BookStoreService;
+import com.guru.crud.service.ReviewService;
 
 @Service
 class BookStoreServiceImpl implements BookStoreService {
@@ -28,6 +31,9 @@ class BookStoreServiceImpl implements BookStoreService {
 	private final BookRepository bookRepository;
 
 	private final ModelMapper modelMapper;
+	
+	@Autowired
+	ReviewService reviewService;
 
 	@Autowired
 	public BookStoreServiceImpl(BookRepository bookRepository, ModelMapper modelMapper) {
@@ -103,9 +109,16 @@ class BookStoreServiceImpl implements BookStoreService {
 	 * @return List<BookDto>
 	 */
 	@Override
-	public List<BookDto> getAllBooks() {
+	public List<BookReviewDto> getAllBooks() {
+		List<BookReviewDto> bookReviews = new ArrayList<>();
 		List<Book> books = bookRepository.findAll();
-		return mapBookListToBooDtoList(books);
+		for(Book book: books) {
+			Double review = reviewService.findReviewsById(book.getId()).parallelStream().mapToInt(n -> n.getReview()).average().getAsDouble();
+			BookReviewDto bookReviewDto = modelMapper.map(book, BookReviewDto.class);
+			bookReviewDto.setReview(review.intValue());
+			bookReviews.add(bookReviewDto);
+		}
+		return bookReviews;
 	}
 
 	/**

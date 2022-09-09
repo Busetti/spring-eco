@@ -22,7 +22,7 @@ public class UserController {
 	@Lazy
 	PasswordEncoder encoder;
 	
-	@PostMapping("/create")
+	@PostMapping("/signup")
 	public UserEntity createUser(@RequestBody UserEntity user) {
 		user.setPassword(encoder.encode(user.getPassword()));
 		return entityRepository.save(user);

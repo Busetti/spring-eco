@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.guru.crud.entity.BookDto;
+import com.guru.crud.entity.BookReviewDto;
 import com.guru.crud.entity.CategoryEnum;
 import com.guru.crud.service.BookStoreService;
 
@@ -82,7 +83,7 @@ public class BookStoreController {
 	 * @return List<BookDto>
 	 */
 	@GetMapping("/book-list")
-	public List<BookDto> getAllBooks() {
+	public List<BookReviewDto> getAllBooks() {
 		return bookStoreService.getAllBooks();
 	}
 
